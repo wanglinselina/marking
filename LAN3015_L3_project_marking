@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAN3005 智能批改與講評系統</title>
+    <title>LAN3015 智能批改與講評系統</title>
     <style>
         :root { --primary: #1e3a8a; --secondary: #b45309; --bg: #f8fafc; --white: #ffffff; }
         body { font-family: 'Microsoft YaHei', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
