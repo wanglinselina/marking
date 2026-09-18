@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAN3005 智能批改與講評系統</title>
+    <style>
+        :root { --primary: #1e3a8a; --secondary: #b45309; --bg: #f8fafc; --white: #ffffff; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: var(--primary); color: var(--white); padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        
+        .control-panel { background: var(--white); padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .api-setup { background: #eff6ff; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-bottom: 20px; }
+        .api-setup input { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
+        
+        .upload-area { border: 2px dashed #94a3b8; border-radius: 8px; padding: 40px; text-align: center; background: #f8fafc; cursor: pointer; transition: 0.3s; }
+        .upload-area:hover { background: #e2e8f0; border-color: var(--primary); }
+        .upload-area input[type="file"] { display: none; }
+        
+        .report-card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid var(--secondary); }
+        .report-card h3 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .report-score { font-size: 1.5em; font-weight: bold; color: #dc2626; float: right; margin-top: -45px; }
+        
+        .loading { display: none; text-align: center; padding: 20px; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>LAN3005 智能批改與講評系統</h1>
+        <p>自動解析學生 Word 報告並生成結構化講評</p>
+    </div>
+    
+    <div class="control-panel">
+        <div class="api-setup">
+            <strong>🔒 系統安全驗證 (API Key)</strong><br>
+            <span style="font-size: 0.9em; color: #475569;">本系統在瀏覽器本地運行，請輸入你的 Google Gemini API Key 以啟用批改引擎（金鑰僅存於當下視窗，不會上傳）。</span>
+            <input type="password" id="apiKey" placeholder="輸入 API Key (例如：AIzaSy...)">
+        </div>
+
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <h3 style="margin: 0; color: #475569;">📂 點擊或拖曳上載學生的 Word 報告 (.doc)</h3>
+            <p style="margin: 10px 0 0; font-size: 0.9em;">支援批量選擇多份檔案同時批改</p>
+            <input type="file" id="fileInput" multiple accept=".doc,.txt" onchange="handleFiles(this.files)">
+        </div>
+    </div>
+
+    <div id="loading" class="loading">⏳ AI 正在深度批改報告中，請稍候...</div>
+    <div id="results-container"></div>
+</div>
+
+<script>
+    // 處理檔案讀取
+    async function handleFiles(files) {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        if (!apiKey) {
+            alert("請先輸入 API Key 才能進行批改！");
+            return;
+        }
+
+        const resultsContainer = document.getElementById('results-container');
+        document.getElementById('loading').style.display = 'block';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const text = await readFileAsync(file);
+            await gradeReport(file.name, text, apiKey, resultsContainer);
+        }
+
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function readFileAsync(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            // 讀取我們先前生成的帶有 UTF-8 BOM 的 HTML Word 檔
+            reader.readAsText(file, 'utf-8');
+        });
+    }
+
+    // 呼叫 AI 進行批改
+    async function gradeReport(fileName, fileContent, apiKey, container) {
+        // 設定國家語委水平測試評審級別的嚴謹度與課程專屬評分量表
+        const prompt = `你是一位資深的香港大專普通話講師，具備國家語委普通話水平測試評審的專業背景。
+請根據以下學生的《京港商務交流晚宴》決策報告，進行嚴謹且具建設性的批改。
+
+【評分標準 (滿分 100)】：
+1. 稱謂與交際禮儀 (35%)：是否加上姓氏與頭銜？介紹是否符合「尊者居後」？名片遞接細節是否正確？
+2. 宴會座次安排 (35%)：主位是否面朝大門？第一主賓是否在主人右側（以右為尊）？
+3. 職場防雷守則 (30%)：手機處理方式是否得體？挑選的亂筷禁忌解釋是否正確？
+
+請嚴格輸出以下 HTML 格式的講評（不要加上 markdown 標記）：
+<div class="report-card">
+    <h3>📄 檔案：${fileName}</h3>
+    <div class="report-score">[總分] 分</div>
+    <p><strong>🌟 表現亮點：</strong><br>[具體指出學生做對的 1-2 個細節]</p>
+    <p><strong>⚠️ 糾正與建議：</strong><br>[以溫和但直接的語氣，具體指出哪裡不符合內地職場禮儀或觀念錯誤，若全對則給予進階職場建議]</p>
+    <p style="font-size:0.9em; color:#64748b; margin-top:15px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+        <strong>📋 扣分細節 / 評分依據：</strong>[簡述各項得分狀況]
+    </p>
+</div>
+
+以下是學生的報告原文內容（HTML 格式）：
+${fileContent}
+`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.2 } // 降低隨機性，確保評分標準一致
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+            
+            const feedbackHtml = data.candidates[0].content.parts[0].text;
+            
+            // 清除可能殘留的 markdown 標籤
+            const cleanHtml = feedbackHtml.replace(/```html|```/g, '');
+            container.innerHTML += cleanHtml;
+
+        } catch (error) {
+            container.innerHTML += `
+            <div class="report-card" style="border-left-color: #dc2626;">
+                <h3>📄 檔案：${fileName} (批改失敗)</h3>
+                <p style="color: #dc2626;">錯誤訊息：${error.message}</p>
+                <p>請檢查 API Key 是否正確，或稍後再試。</p>
+            </div>`;
+        }
+    }
+</script>
+
+</body>
+</html>
