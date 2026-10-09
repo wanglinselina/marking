@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAN3005 課次六：雙階段智能批改系統 (DeepSeek 嚴格版)</title>
+    <style>
+        :root { --primary: #0284c7; --secondary: #b45309; --bg: #f8fafc; --white: #ffffff; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: var(--primary); color: var(--white); padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        
+        .api-setup { background: #f0fdfa; padding: 15px; border-radius: 0 0 8px 8px; border-bottom: 2px solid #0d9488; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
+        .api-setup input { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
+        
+        .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        
+        .upload-card { background: var(--white); padding: 25px; border-radius: 8px; text-align: center; border: 2px dashed #94a3b8; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .upload-card.stage1:hover { border-color: #059669; background: #ecfdf5; }
+        .upload-card.stage2:hover { border-color: #b91c1c; background: #fef2f2; }
+        .upload-card h3 { margin-top: 0; }
+        .upload-card input[type="file"] { display: none; }
+        
+        .report-card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid var(--primary); }
+        .report-card h3 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .report-score { font-size: 1.8em; font-weight: bold; color: #dc2626; float: right; margin-top: -45px; background: #fee2e2; padding: 5px 15px; border-radius: 5px; }
+        
+        .feedback-box { background: #fffbeb; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #fde68a; }
+        .feedback-box ul { margin: 0; padding-left: 20px; }
+        .feedback-box li { margin-bottom: 10px; }
+        
+        .loading { display: none; text-align: center; padding: 20px; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📝 LAN3005 課次六：賓客訪港會議 雙階段批改系統</h1>
+        <p>階段一：初稿論點診斷 ｜ 階段二：最終修改幅度與決策評分</p>
+    </div>
+    
+    <div class="api-setup">
+        <strong>🔒 系統安全驗證 (DeepSeek 官方 API Key)</strong>
+        <input type="password" id="apiKey" placeholder="請輸入 sk- 開頭的 DeepSeek 金鑰...">
+    </div>
+
+    <div class="grid-2col">
+        <!-- 階段一上傳區 -->
+        <div class="upload-card stage1" onclick="document.getElementById('fileStage1').click()">
+            <h3 style="color: #059669;">📥 階段一：批改【初版草稿】</h3>
+            <p style="font-size: 0.9em; color: #475569;">學生上傳的第一版文件。系統將不評分，只產出針對「論點與論據」的具體修正建議，供學生參考修改。</p>
+            <input type="file" id="fileStage1" multiple accept=".doc,.txt" onchange="handleFiles(this.files, 1)">
+        </div>
+
+        <!-- 階段二上傳區 -->
+        <div class="upload-card stage2" onclick="document.getElementById('fileStage2').click()">
+            <h3 style="color: #b91c1c;">📥 階段二：批改【最終決策報告】</h3>
+            <p style="font-size: 0.9em; color: #475569;">學生修改後的完整文件。系統將嚴格比對「初稿」與「最終版」，根據其吸收反饋的程度進行打分。</p>
+            <input type="file" id="fileStage2" multiple accept=".doc,.txt" onchange="handleFiles(this.files, 2)">
+        </div>
+    </div>
+
+    <div id="loading" class="loading">⏳ DeepSeek 正在執行深度批改，請稍候...</div>
+    <div id="results-container"></div>
+</div>
+
+<script>
+    async function handleFiles(files, stage) {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        if (!apiKey) {
+            alert("請先輸入 DeepSeek API Key！");
+            return;
+        }
+
+        const resultsContainer = document.getElementById('results-container');
+        document.getElementById('loading').style.display = 'block';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const text = await readFileAsync(file);
+            if (stage === 1) {
+                await gradeStage1(file.name, text, apiKey, resultsContainer);
+            } else {
+                await gradeStage2(file.name, text, apiKey, resultsContainer);
+            }
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        // 清空 input 避免重複選取失效
+        document.getElementById('fileStage1').value = '';
+        document.getElementById('fileStage2').value = '';
+    }
+
+    function readFileAsync(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file, 'utf-8');
+        });
+    }
+
+    // ================= 階段一：初稿批改 (給建議不打分) =================
+    async function gradeStage1(fileName, fileContent, apiKey, container) {
+        const systemPrompt = `你是一位香港大專普通話講師。學生繳交了《賓客訪港》會議的首輪發言草稿。
+你的任務是「找出語病、邏輯漏洞與論據不足之處」，並提供具體的修改建議，讓學生帶回去修改。此階段不需要打分。
+
+審視標準：
+1. 是否有清晰的「論點」（建議去哪裡）與「論據」（為什麼去那裡，例如：時代廣場最大、旺角人流多、集中行程省車費）。
+2. 語氣是否適合商務會議（不能太隨便或太強硬）。
+
+請嚴格輸出以下 HTML 格式（不要加上 \`\`\`html 標記）：
+<div class="report-card" style="border-left-color: #059669;">
+    <h3 style="color: #059669;">📄 檔案：${fileName} (階段一：初稿診斷)</h3>
+    <p><strong>🌟 總體印象：</strong>[指出初步草稿寫得好的地方]</p>
+    
+    <div class="feedback-box">
+        <h4 style="margin-top:0; color:#047857;">💬 給各組員的具體修改建議 (請老師複製此區塊發還給學生)：</h4>
+        <ul>
+            <li><strong>主席 (陳達志)：</strong> [指出其開場白或行程建議的缺漏，要求補充...]</li>
+            <li><strong>與會者 A (張緯翎)：</strong> [指出其論據是否充分，語氣是否合適...]</li>
+            <li><strong>與會者 B (王芷君)：</strong> [...]</li>
+            <li><strong>與會者 C (謝芝婷)：</strong> [...]</li>
+            <li><strong>與會者 D (黃宜恩)：</strong> [...]</li>
+        </ul>
+    </div>
+</div>`;
+
+        await callDeepSeek(systemPrompt, fileContent, apiKey, container);
+    }
+
+    // ================= 階段二：最終版批改 (嚴格比對打分) =================
+    async function gradeStage2(fileName, fileContent, apiKey, container) {
+        const systemPrompt = `你是一位極度嚴格的香港大專普通話講師。學生提交了包含「初稿、老師反饋、修正版對比、最終行程表」的完整決策報告。你必須嚴格執行分項計分。
+
+【嚴格扣分標準 (滿分 100)】：
+請分別計算以下三項分數，最後加總。
+1. 反饋修正落實度 (滿分 40分) - 最重要！
+   - 審查文件中 [初稿] 與 [最終版] 的對比。
+   - 扣分條件：如果學生的 [最終版] 幾乎沒有修改，或者完全無視文件中記錄的「老師批改反饋」，請重扣 20-30 分。如果有修改，但只是改錯別字而沒有強化「論據（原因）」或「語氣」，扣 10-15 分。
+2. 最終語言與表達品質 (滿分 30分)
+   - 扣分條件：修正後的台詞語氣若不適合會議、用詞生硬或缺乏邏輯，每個角色扣 3-5 分。
+3. 最終行程表合理性 (滿分 30分)
+   - 扣分條件：行程表若有留白、邏輯衝突（例如同一時間在兩個地方），或未能融合多數人的合理建議，扣 10-20 分。
+
+請嚴格輸出以下 HTML 格式（不要加上 \`\`\`html 標記）：
+<div class="report-card" style="border-left-color: #b91c1c;">
+    <h3 style="color: #b91c1c;">📄 檔案：${fileName} (階段二：最終評核)</h3>
+    <div class="report-score">[總分] 分</div>
+    
+    <div class="feedback-box" style="background:#fef2f2; border-color:#fca5a5;">
+        <h4 style="margin-top:0; color:#b45309;">📊 嚴格評分明細：</h4>
+        <ul>
+            <li><strong>反饋修正落實度 (得分/40)：</strong> [具體說明：學生是否真的根據建議修改了？還是敷衍了事？扣了幾分？]</li>
+            <li><strong>語言與表達 (得分/30)：</strong> [具體說明各角色最終稿的語氣與論據表現。]</li>
+            <li><strong>行程表合理性 (得分/30)：</strong> [具體說明最終排程是否合理。]</li>
+        </ul>
+    </div>
+
+    <p><strong>🌟 總結講評：</strong><br>[給予團隊最終的勉勵或警惕]</p>
+</div>`;
+
+        await callDeepSeek(systemPrompt, fileContent, apiKey, container);
+    }
+
+    async function callDeepSeek(systemPrompt, userText, apiKey, container) {
+        try {
+            const response = await fetch('https://api.deepseek.com/chat/completions', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat", 
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: `學生文件內容：\n${userText}` }
+                    ],
+                    temperature: 0.1 // 保持低溫度以確保計分穩定性
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            
+            const feedbackHtml = data.choices[0].message.content.replace(/```html|```/g, '');
+            container.innerHTML = feedbackHtml + container.innerHTML; // 將最新結果插在最上方
+
+        } catch (error) {
+            container.innerHTML = `
+            <div class="report-card" style="border-left-color: #dc2626;">
+                <h3>📄 檔案處理失敗</h3>
+                <p style="color: #dc2626;">錯誤訊息：${error.message}</p>
+                <p>請檢查 API Key 是否正確及餘額狀態。</p>
+            </div>` + container.innerHTML;
+        }
+    }
+</script>
+
+</body>
+</html>
