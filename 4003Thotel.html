@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T Hotel 議論文 - 老師專屬 DeepSeek AI 批改平台</title>
+    <title>T Hotel 議論文 - 老師專屬 DeepSeek AI 批改平臺</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- docx.js 用於生成 Word 文件 -->
@@ -22,7 +22,7 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow-md">
         <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-lg font-bold">🍎 老師專屬 DeepSeek AI 批改與反饋後台</h1>
+            <h1 class="text-lg font-bold">🍎 老師專屬 DeepSeek AI 批改與反饋後臺</h1>
             <span class="text-xs bg-amber-600 px-2 py-1 rounded">教師權限</span>
         </div>
     </header>
@@ -33,7 +33,7 @@
         <!-- 說明橫幅 -->
         <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm">
             <p class="text-sm text-blue-700 font-medium">
-                👉 教師操作指引：請先設定 DeepSeek API Key，接著上傳學生小組交上來的 `.docx` 作業檔案，系統將自動進行 AI 智慧分析（重點考核：論點清晰度與論據充份性），確認後即可導出帶有批改反饋的檔案發還學生。
+                👉 教師操作指引：請先設定 DeepSeek API Key，接著上傳學生小組交上來的 `.docx` 作業檔案。AI 將依據「合格 40 分、完美參考水準 88 分」的嚴格配分標準進行鑑別化評分，確保各組成績拉開差距。
             </p>
         </div>
 
@@ -56,30 +56,32 @@
             <!-- AI 執行按鈕 -->
             <div>
                 <button onclick="runDeepSeekAI()" id="ai-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition shadow flex items-center justify-center gap-2">
-                    ✨ 啟動 DeepSeek AI 自動分析與批改
+                    ✨ 啟動 DeepSeek AI 鑑別化評分與批改
                 </button>
             </div>
 
             <!-- 評分與評級結果 -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">建議總成績（滿分 100）</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">總成績（滿分 100）</label>
                     <input type="number" id="teacher-score" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm font-bold text-indigo-700" placeholder="分數">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">論點清晰度評級</label>
                     <select id="teacher-grade-thesis" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm bg-white">
-                        <option value="各分論點清晰明確，具備具體特質">各分論點清晰明確，具備具體特質</option>
-                        <option value="論點尚算清晰，唯部分用詞較籠統">論點尚算清晰，唯部分用詞較籠統</option>
-                        <option value="論點模糊，未能清晰點出核心">論點模糊，未能清晰點出核心</option>
+                        <option value="優秀：論點極為清晰明確，具備具體特質">優秀：論點極為清晰明確，具備具體特質</option>
+                        <option value="良好：論點尚算清晰，唯部分用詞較籠統">良好：論點尚算清晰，唯部分用詞較籠統</option>
+                        <option value="合格：僅達基本要求，論點偏向籠統">合格：僅達基本要求，論點偏向籠統</option>
+                        <option value="未達標：論點模糊不清">未達標：論點模糊不清</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">論據充份性評級</label>
                     <select id="teacher-grade-evidence" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm bg-white">
-                        <option value="論據充份，且清楚確實引述資料來源">論據充份，且清楚確實引述資料來源</option>
-                        <option value="論據尚算充份，惟資料出處交代不夠完整">論據尚算充份，惟資料出處交代不夠完整</option>
-                        <option value="論據空泛，未有確實引述相應資料">論據空泛，未有確實引述相應資料</option>
+                        <option value="優秀：論據充份有力，確實引述具體資料與數據">優秀：論據充份有力，確實引述具體資料與數據</option>
+                        <option value="良好：論據算充份，惟細節或數據可再精確">良好：論據算充份，惟細節或數據可再精確</option>
+                        <option value="合格：僅有零散提及，缺乏具體資料來源">合格：僅有零散提及，缺乏具體資料來源</option>
+                        <option value="未達標：論據空泛，未引述任何資料">未達標：論據空泛，未引述任何資料</option>
                     </select>
                 </div>
             </div>
@@ -92,7 +94,7 @@
             <!-- 導出發還學生的 Word -->
             <div class="pt-4 border-t">
                 <button onclick="exportTeacherWord()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-base hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2">
-                    📥 導出包含【AI 批改反饋與成績】的 Word 檔案發還學生
+                    📥 導出包含【AI 鑑別化評分與反饋】的 Word 檔案發還學生
                 </button>
             </div>
 
@@ -102,7 +104,7 @@
 
     <!-- 頁尾 -->
     <footer class="bg-slate-200 text-slate-600 text-center py-4 text-xs mt-auto">
-        T Hotel 老師專屬 AI 批改平台 © 2026
+        T Hotel 老師專屬 AI 批改平臺 © 2026
     </footer>
 
     <!-- JavaScript 邏輯控制 -->
@@ -137,13 +139,15 @@
             }
 
             const aiBtn = document.getElementById('ai-btn');
-            aiBtn.innerText = "⏳ DeepSeek AI 正在分析論點清晰度與論據充份性...";
+            aiBtn.innerText = "⏳ DeepSeek AI 正在依據標準進行鑑別化評分...";
             aiBtn.disabled = true;
 
             const prompt = `你是一位資深的中文科老師。現在需要批改一份關於香港 T Hotel 考察的議論文小組作業。
-批改重點考核兩個核心能力：
-1. 論點清晰度：分論點是否清晰明確、具備具體特質（例如：寫出「酒店環境優美寧靜」而非籠統的「酒店環境」）。
-2. 論據充份性：論據是否充份，且是否確實引述相應的資料來源、數據或旅客評語。
+請嚴格依據以下評分標準給出具鑑別度的分數與反饋（總分 100 分）：
+1. 合格基準（40 分）：基本完成結構，但論點較籠統（例如只寫「酒店環境」而非具體特質），論據缺乏具體資料來源或數據支援。
+2. 完美參考水準（88 分）：達到如同文件二的高標——論點清晰明確（具體點出特質如環境優美、空間寬敞），論據充份有力（精確引述資料來源如「根據資料一/三」、具體數據如「四百多呎」或真實旅客評語）。
+3. 需根據學生的實際表現合理分配分數（最低可給 40 分，若表現極佳接近參考答案可給 85-92 分），讓不同組別之間能看出明顯的表現與分數差距。
+4. 配分權重：論點清晰度佔 40%、論據充份性佔 50%、結構與表達佔 10%。
 
 以下是學生作業內容：
 """
@@ -152,10 +156,10 @@ ${rawStudentTextForAI}
 
 請嚴格且專業地給出以下 JSON 格式回覆（切勿包含額外 markdown 標記外字眼，確保可被 JSON.parse 解析）：
 {
-  "score": 85,
-  "thesisGrade": "各分論點清晰明確，具備具體特質",
-  "evidenceGrade": "論據充份，且清楚確實引述資料來源",
-  "feedback": "詳細的批改反饋與改進建議，請針對學生的論點與論據表現給予具體指點（繁體中文）"
+  "score": 75,
+  "thesisGrade": "良好：論點尚算清晰，唯部分用詞較籠統",
+  "evidenceGrade": "良好：論據算充份，惟細節或數據可再精確",
+  "feedback": "詳細的批改反饋，指出其論點是否夠具體、論據是否確實引述資料來源與數據，並說明如何改進才能達到 88 分以上的參考水準（繁體中文）"
 }`;
 
             try {
@@ -177,17 +181,17 @@ ${rawStudentTextForAI}
                 resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
                 let aiResult = JSON.parse(resultText);
 
-                document.getElementById('teacher-score').value = aiResult.score || 85;
-                document.getElementById('teacher-grade-thesis').value = aiResult.thesisGrade || "論點尚算清晰，唯部分用詞較籠統";
-                document.getElementById('teacher-grade-evidence').value = aiResult.evidenceGrade || "論據尚算充份，惟資料出處交代不夠完整";
+                document.getElementById('teacher-score').value = aiResult.score || 75;
+                document.getElementById('teacher-grade-thesis').value = aiResult.thesisGrade || "良好：論點尚算清晰，唯部分用詞較籠統";
+                document.getElementById('teacher-grade-evidence').value = aiResult.evidenceGrade || "良好：論據算充份，惟細節或數據可再精確";
                 document.getElementById('teacher-feedback').value = aiResult.feedback || "AI 批改完成。";
 
-                alert("DeepSeek AI 智慧批改完成！");
+                alert("DeepSeek AI 鑑別化評分完成！");
             } catch (error) {
                 console.error(error);
                 alert("AI 批改請求失敗，請檢查 API Key 是否正確或網絡連接。");
             } finally {
-                aiBtn.innerText = "✨ 啟動 DeepSeek AI 自動分析與批改";
+                aiBtn.innerText = "✨ 啟動 DeepSeek AI 鑑別化評分與批改";
                 aiBtn.disabled = false;
             }
         }
@@ -208,7 +212,7 @@ ${rawStudentTextForAI}
                         new Paragraph({ spacing: { after: 300 }, children: [] }),
                         
                         // 批改結果摘要
-                        new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: `【DeepSeek AI 批改與反饋報告】總成績：${score} 分`, bold: true, size: 24, color: "b91c1c", font: "Microsoft JhengHei" })] }),
+                        new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: `【DeepSeek AI 專業評量報告】總成績：${score} 分`, bold: true, size: 24, color: "b91c1c", font: "Microsoft JhengHei" })] }),
                         new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: `• 論點清晰度評級：${gradeThesis}`, size: 20, font: "Microsoft JhengHei" })] }),
                         new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `• 論據充份性評級：${gradeEvidence}`, size: 20, font: "Microsoft JhengHei" })] }),
                         new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: `詳盡反饋與建議：${feedback}`, size: 20, color: "333333", font: "Microsoft JhengHei" })] }),
