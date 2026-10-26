@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAN4003 專題報告 - 教師智能批改平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'PingFang HK', 'Microsoft JhengHei', sans-serif; background-color: #f3f4f6; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; color: #1f2937; }
+        .markdown-body p { margin-bottom: 0.5rem; color: #4b5563; line-height: 1.6; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #4b5563; }
+        .markdown-body strong { color: #111827; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- 標題區 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">LAN4003 專題報告 AI 智能批改平台</h1>
+                <p class="text-sm text-gray-500 mt-1">上載組長統整的 JSON 檔案，調用 DeepSeek API 進行自動評分與回饋生成。</p>
+            </div>
+            <i class="fas fa-chalkboard-teacher text-4xl text-blue-500"></i>
+        </div>
+
+        <!-- 系統設定區 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>API 連線設定</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API 端點網址 (Endpoint)</label>
+                    <!-- 支援直接填入 DeepSeek 官方或自建的 GAS Proxy 網址 -->
+                    <input type="text" id="apiEndpoint" value="https://api.deepseek.com/v1/chat/completions" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API 金鑰 (API Key)</label>
+                    <input type="password" id="apiKey" placeholder="請輸入 DeepSeek API Key (sk-...)" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">* 設定將暫存於您的瀏覽器本地端，關閉網頁後不會外洩。</p>
+        </div>
+
+        <!-- 檔案上載與預覽區 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-file-upload mr-2"></i>上載學生作業</h2>
+            
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition" id="dropZone">
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                <p class="text-gray-600 mb-2">將學生提交的 JSON 檔案拖曳至此，或</p>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700">選擇檔案</button>
+            </div>
+
+            <!-- 學生資料預覽 -->
+            <div id="studentDataPreview" class="hidden mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-gray-700">作業預覽解析成功</h3>
+                    <button id="startGradingBtn" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center shadow-md transition">
+                        <i class="fas fa-robot mr-2"></i>開始 AI 智能批改
+                    </button>
+                </div>
+                <div id="previewContent" class="text-sm text-gray-600 h-48 overflow-y-auto bg-white p-3 border rounded"></div>
+            </div>
+        </div>
+
+        <!-- 批改結果區 -->
+        <div id="resultSection" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2"></i>批改報告</h2>
+            
+            <!-- 載入中動畫 -->
+            <div id="loadingState" class="hidden flex flex-col items-center justify-center py-10">
+                <div class="loader mb-4"></div>
+                <p class="text-gray-500 text-sm">AI 正在深度閱讀與批改中，請稍候...</p>
+            </div>
+
+            <!-- AI 回應內容 -->
+            <div id="aiFeedbackContent" class="markdown-body hidden bg-blue-50/50 p-5 rounded-lg border border-blue-100">
+                <!-- 內容由 JS 填入 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStudentData = null;
+
+        // 頁面載入時讀取本地儲存的設定
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('lan4003_api_key');
+            const savedEndpoint = localStorage.getItem('lan4003_api_endpoint');
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+            if (savedEndpoint) document.getElementById('apiEndpoint').value = savedEndpoint;
+        });
+
+        // 儲存設定
+        document.getElementById('apiKey').addEventListener('change', (e) => localStorage.setItem('lan4003_api_key', e.target.value));
+        document.getElementById('apiEndpoint').addEventListener('change', (e) => localStorage.setItem('lan4003_api_endpoint', e.target.value));
+
+        // 處理檔案上載
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', handleFileUpload);
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    currentStudentData = json;
+                    
+                    // 顯示預覽
+                    document.getElementById('studentDataPreview').classList.remove('hidden');
+                    
+                    // 為了避免圖片 Base64 字串過長塞爆預覽，簡單做個過濾替換
+                    let previewJSON = JSON.parse(JSON.stringify(json));
+                    if(previewJSON.arguments) {
+                        previewJSON.arguments.forEach(arg => {
+                            if(arg.evidenceImage && arg.evidenceImage.length > 100) {
+                                arg.evidenceImage = "[圖片數據已省略，保留於後台]";
+                            }
+                        });
+                    }
+                    
+                    document.getElementById('previewContent').innerHTML = `<pre>${JSON.stringify(previewJSON, null, 2)}</pre>`;
+                    document.getElementById('resultSection').classList.add('hidden');
+                    
+                } catch (error) {
+                    alert('檔案解析失敗，請確保上傳的是格式正確的 JSON 檔案。');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 開始評分邏輯
+        document.getElementById('startGradingBtn').addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+
+            if (!apiKey) {
+                alert('請先輸入 API Key。');
+                return;
+            }
+            if (!currentStudentData) {
+                alert('請先上傳學生作業。');
+                return;
+            }
+
+            // 準備 UI 狀態
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('aiFeedbackContent').classList.add('hidden');
+            document.getElementById('startGradingBtn').disabled = true;
+            document.getElementById('startGradingBtn').classList.add('opacity-50');
+
+            // 移除 Base64 圖片數據以節省 Token（AI 看不到圖片，只根據文字論點與分析評分）
+            const dataForAI = JSON.parse(JSON.stringify(currentStudentData));
+            if(dataForAI.arguments) {
+                dataForAI.arguments.forEach(arg => delete arg.evidenceImage);
+            }
+
+            // 建構給 AI 的 Prompt，嚴格參照 LAN4003 的標準
+            const systemPrompt = `你是一位香港大專院校「職業中文傳意」(LAN4003) 課程的專業評分教師。
+請根據【九巴優質客運大獎】個案研習的要求，評估學生的專題報告。
+
+評核標準（總分100分）：
+1. 論點建立 (25分)：中心論點與三個分論點是否明確、緊扣客運設施、客運服務、客運環境。
+2. 尋找論據 (25分)：提取的客觀事實（如數據、問卷、實地測試結果）是否充分。
+3. 論證嚴密 (25分)：學生的「論據怎樣證明了論點」說明是否具備邏輯，是否有妥善運用對比、舉例或數據。
+4. 結構與表達 (25分)：文句是否通順流暢，用詞是否符合職場匯報的專業語氣。
+
+請回傳 HTML 格式的評分報告，包含：
+- <div class="text-2xl font-bold text-blue-600 mb-2">總分：[X]/100</div>
+- <h3 class="border-b pb-2">各項評分明細</h3> (使用表格或列表)
+- <h3 class="border-b pb-2">綜合評語</h3> (肯定優點並指出不足)
+- <h3 class="border-b pb-2">分論點具體改善建議</h3> (針對學生三個論點的推論過程給予具體寫作指導)
+（請直接輸出 HTML，不需要 markdown 標籤如 \`\`\`html）`;
+
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: `以下是學生提交的 JSON 資料：\n${JSON.stringify(dataForAI, null, 2)}` }
+                        ],
+                        temperature: 0.3
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 請求失敗: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                let aiResponse = result.choices[0].message.content;
+                
+                // 清理可能包含的 markdown html 標記
+                aiResponse = aiResponse.replace(/```html/g, '').replace(/```/g, '');
+
+                document.getElementById('aiFeedbackContent').innerHTML = aiResponse;
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('aiFeedbackContent').classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert('發生錯誤：' + error.message + '\n\n如果是使用 GAS Proxy，請確保您的 doPost 能夠正確接收並轉發 headers，並處理 OPTIONS 預檢請求 (CORS)。');
+                document.getElementById('loadingState').classList.add('hidden');
+            } finally {
+                document.getElementById('startGradingBtn').disabled = false;
+                document.getElementById('startGradingBtn').classList.remove('opacity-50');
+            }
+        });
+
+        // 拖曳上傳特效
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults (e) { e.preventDefault(); e.stopPropagation(); }
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('bg-gray-100', 'border-blue-400'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('bg-gray-100', 'border-blue-400'), false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            if (files.length) {
+                fileInput.files = files;
+                handleFileUpload({target: fileInput});
+            }
+        });
+    </script>
+</body>
+</html>
