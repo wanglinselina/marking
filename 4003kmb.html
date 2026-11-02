@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAN4003 專題報告 - 教師智能批改平台</title>
+    <title>LAN4003 專題報告 - 教師智能批改平台 (含 PPT 修改藍圖)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { font-family: 'PingFang HK', 'Microsoft JhengHei', sans-serif; background-color: #f3f4f6; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
         .markdown-body p { margin-bottom: 0.75rem; color: #4b5563; line-height: 1.6; }
         .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #4b5563; }
         .markdown-body strong { color: #111827; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-        .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
-        .markdown-body th { background-color: #f3f4f6; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; background: white; }
+        .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.75rem; text-align: left; }
+        .markdown-body th { background-color: #f3f4f6; font-weight: bold; color: #374151; }
     </style>
 </head>
 <body class="p-6">
@@ -25,7 +25,7 @@
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">LAN4003 專題報告 AI 智能批改平台</h1>
-                <p class="text-sm text-gray-500 mt-1">支援批改「香港健康生活產業大奬」小組 JSON 報告，調用 DeepSeek API 進行自動評分與回饋。</p>
+                <p class="text-sm text-gray-500 mt-1">支援批改「香港健康生活產業大奬」小組報告，並自動生成下一版 PPT 修改藍圖。</p>
             </div>
             <i class="fas fa-chalkboard-teacher text-4xl text-blue-500"></i>
         </div>
@@ -58,7 +58,7 @@
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold text-gray-700">作業預覽解析成功</h3>
                     <button id="startGradingBtn" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center shadow-md transition">
-                        <i class="fas fa-robot mr-2"></i>開始 AI 智能批改
+                        <i class="fas fa-robot mr-2"></i>開始 AI 智能批改與生成 PPT 藍圖
                     </button>
                 </div>
                 <div id="previewContent" class="text-sm text-gray-600 h-48 overflow-y-auto bg-white p-3 border rounded"></div>
@@ -66,14 +66,14 @@
         </div>
 
         <div id="resultSection" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
-            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2"></i>批改報告</h2>
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2"></i>批改報告與修改藍圖</h2>
             
             <div id="loadingState" class="hidden flex flex-col items-center justify-center py-10">
                 <div class="loader mb-4"></div>
-                <p class="text-gray-500 text-sm">AI 正在深度閱讀與批改中，請稍候...</p>
+                <p class="text-gray-500 text-sm">AI 正在深度閱讀與規劃下一版簡報，請稍候...</p>
             </div>
 
-            <div id="aiFeedbackContent" class="markdown-body hidden bg-blue-50/50 p-5 rounded-lg border border-blue-100">
+            <div id="aiFeedbackContent" class="markdown-body hidden bg-blue-50/50 p-6 rounded-lg border border-blue-100">
             </div>
         </div>
     </div>
@@ -106,7 +106,7 @@
                     
                     document.getElementById('studentDataPreview').classList.remove('hidden');
                     
-                    // 過濾圖片 Base64 以供預覽
+                    // 過濾圖片 Base64 以供純文字預覽
                     let previewJSON = JSON.parse(JSON.stringify(json));
                     if(previewJSON.membersArguments) {
                         previewJSON.membersArguments.forEach(member => {
@@ -170,7 +170,7 @@
             document.getElementById('startGradingBtn').disabled = true;
             document.getElementById('startGradingBtn').classList.add('opacity-50');
 
-            // 核心修正：正確移除學生健康生活產業工作台中產生的巨量 Base64 圖片資料
+            // 確保移除 Base64 圖片資料，防止 API Token 超載
             const dataForAI = JSON.parse(JSON.stringify(currentStudentData));
             if(dataForAI.membersArguments) {
                 dataForAI.membersArguments.forEach(member => {
@@ -190,13 +190,37 @@
 4. 結構與表達 (25分)：整體結構是否完整，各組員的論點是否能互相配合支撐全組的中心論點，文辭是否專業。
 
 請回傳 HTML 格式的評分報告，嚴格包含以下結構（請直接輸出 HTML，不需要 markdown 標籤，不使用 \`\`\`html）：
+
 <div class="text-2xl font-bold text-blue-600 mb-2">總分：[X]/100</div>
 <h3>各項評分明細</h3>
 <table><tr><th>項目</th><th>分數</th><th>評語</th></tr>...</table>
 <h3>綜合評語</h3>
 <p>...</p>
 <h3>各組員分論點具體改善建議</h3>
-<p>針對每位組員(根據 studentName)的論證邏輯給予具體指導...</p>`;
+<p>針對每位組員(根據 studentName)的論證邏輯給予具體寫作或邏輯指導...</p>
+
+<h3>📝 下一版 PPT 結構與內容修改藍圖 (Slide-by-Slide 建議)</h3>
+<p class="mb-4 text-gray-700">以下為各頁投影片的具體修改建議，方便小組直接參考並製作最終版簡報：</p>
+
+<!-- 請為首頁及「每一位組員的分論點頁」，重複生成以下這個代表 PPT 投影片外觀的 div 區塊 -->
+<div class="bg-gray-50 p-6 rounded-xl mb-6 border-2 border-gray-200 shadow-sm relative">
+    <div class="absolute top-0 left-0 w-full h-2 bg-indigo-500 rounded-t-lg"></div>
+    <h4 class="text-xl font-bold text-indigo-900 mb-4">投影片 [頁碼]：[標題 或 負責組員姓名 - 該頁主旨]</h4>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-red-200">
+            <h5 class="font-bold text-red-600 mb-2 border-b border-red-100 pb-1"><i class="fas fa-times-circle mr-1"></i>原版盲點 / 需刪減處</h5>
+            <p class="text-sm text-gray-700">指出該頁原設計或邏輯的不足之處（例如：論據過於冗長、邏輯跳躍、缺乏視覺化焦點等）...</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-green-200">
+            <h5 class="font-bold text-green-600 mb-2 border-b border-green-100 pb-1"><i class="fas fa-check-circle mr-1"></i>下一版建議排版與文案</h5>
+            <ul class="text-sm text-gray-700 list-disc pl-4 space-y-1">
+                <li>建議的列點文案 (Bullet points寫法)...</li>
+                <li>建議的排版方式 (例如：左圖右文對比)...</li>
+                <li>建議如何視覺化數據...</li>
+            </ul>
+        </div>
+    </div>
+</div>`;
 
             try {
                 const response = await fetch(apiEndpoint, {
@@ -223,6 +247,7 @@
                 const result = await response.json();
                 let aiResponse = result.choices[0].message.content;
                 
+                // 去除可能產生的 markdown 代碼塊標記
                 aiResponse = aiResponse.replace(/```html/g, '').replace(/```/g, '');
 
                 document.getElementById('aiFeedbackContent').innerHTML = aiResponse;
