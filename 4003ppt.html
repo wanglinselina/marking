@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+html_code = """<!DOCTYPE html>
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAN4003 智能批改平台 (AI 語意解析版)</title>
+    <title>LAN4003 智能批改平台 (AI 語意解析 + 個人獨立計分版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -22,10 +22,10 @@
     <div class="max-w-5xl mx-auto space-y-6">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">LAN4003 教師智能批改平台 (AI 語意解析版)</h1>
-                <p class="text-sm text-gray-500 mt-1">直接解析散落的投影片純文字，無懼學生更改範本格式。</p>
+                <h1 class="text-2xl font-bold text-gray-800">LAN4003 教師智能批改平台 <span class="text-indigo-600 text-lg">(獨立計分版)</span></h1>
+                <p class="text-sm text-gray-500 mt-1">解析散落文字並為「每位組員的獨立論點」分開打分，自動生成修改藍圖。</p>
             </div>
-            <i class="fas fa-brain text-4xl text-indigo-600"></i>
+            <i class="fas fa-user-check text-4xl text-indigo-600"></i>
         </div>
 
         <!-- API 設定區 -->
@@ -59,7 +59,7 @@
                         <p id="previewMeta" class="text-sm text-indigo-700 mt-1"></p>
                     </div>
                     <button id="startGradingBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 flex items-center shadow-md transition">
-                        <i class="fas fa-robot mr-2"></i>開始 AI 語意批改
+                        <i class="fas fa-robot mr-2"></i>開始 AI 獨立批改
                     </button>
                 </div>
                 <details class="text-sm text-gray-600 bg-white p-3 border rounded cursor-pointer">
@@ -71,10 +71,10 @@
 
         <!-- 批改結果區 -->
         <div id="resultSection" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
-            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2 text-green-500"></i>AI 批改報告</h2>
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2 text-green-500"></i>AI 批改報告 (組員獨立計分)</h2>
             <div id="loadingState" class="hidden flex flex-col items-center justify-center py-12">
                 <div class="loader mb-4"></div>
-                <p class="text-gray-600 font-bold">DeepSeek 正在自行解析散落的文字並重建邏輯架構...</p>
+                <p class="text-gray-600 font-bold">DeepSeek 正在自行解析散落的文字，並為每位組員獨立打分...</p>
             </div>
             <div id="aiFeedbackContent" class="markdown-body hidden bg-gray-50 p-8 rounded-xl border border-gray-200 shadow-inner"></div>
         </div>
@@ -107,8 +107,8 @@
                     currentStudentData = json;
                     
                     const fileName = json.fileName || "未知檔案";
-                    const slideCount = json.slides ? json.slides.length : 0;
-                    document.getElementById('previewMeta').innerText = `來源檔案：${fileName} | 共萃取 ${slideCount} 頁投影片內容`;
+                    const slideCount = json.slides ? json.slides.length : (json.membersArguments ? json.membersArguments.length : 0);
+                    document.getElementById('previewMeta').innerText = `來源檔案：${fileName} | 共萃取資料筆數：${slideCount}`;
                     
                     document.getElementById('previewContent').textContent = JSON.stringify(json, null, 2);
                     document.getElementById('studentDataPreview').classList.remove('hidden');
@@ -137,28 +137,33 @@
             btn.classList.add('opacity-50', 'cursor-not-allowed');
 
             const systemPrompt = `你是一位香港大專院校「職業中文傳意」(LAN4003) 課程的嚴格專業評分教師。
-請根據【香港健康生活產業大奬】個案研習的要求，評估學生繳交的 PPT 專題報告。
+請根據【香港健康生活產業大奬】個案研習的要求，評估學生繳交的 PPT 專題報告文字。
 
-【重要背景說明 - 語意解析挑戰】
-你收到的 JSON 資料是「從學生 PPT 中逐頁萃取出來的散落純文字」。學生可能沒有按照既定範本的標題填寫，或者刪除了提示字眼。
-請發揮你強大的語意理解能力，綜合閱讀這些投影片文字，**自行辨識並重組**出他們的「中心論點」、「各項分論點」以及「事實論據」，並評估其「證明邏輯」是否嚴密。
+【重要背景說明 - 個人獨立計分原則】
+這是一份小組報告，但**每位組員負責一個獨立的分論點**。為了讓學生了解各自的表現與小組內的差距，你必須**為每一個分論點（每一位組員）獨立打分**。
 
-【評分標準（總分100分）】
-* 40分為及格線，88分為達到參考答案標準的極優秀分數。
-1. 論點建立 (25分)：中心論點與分論點是否明確。
-2. 尋找論據 (25分)：搜集的資料是否客觀、具體。
-3. 論證嚴密 (25分)：論據能否有效扣連並證明分論點。
-4. 結構與表達 (25分)：整體結構完整度與文辭專業度。
+【評分標準（每個論點獨立計算，滿分100分）】
+* 40分為及格線，88分為達到參考答案標準的極優秀分數。請根據質量嚴格縮放。
+1. 論點建立 (25分)：該組員的分論點是否明確並緊扣評審準則。
+2. 尋找論據 (25分)：該組員搜集的資料是否客觀、具體（若出現「學生未填寫具體描述」或原封不動保留了範本提示字眼，請於此項給予極低分）。
+3. 論證嚴密 (25分)：該組員的證明邏輯是否具備說服力，能否有效扣連論據與分論點。
+4. 結構與表達 (25分)：該組員頁面的結構完整度與文辭專業度。
 
 請直接回傳 HTML 格式的評分報告（不使用 \`\`\`html 標籤）：
 
-<div class="text-3xl font-extrabold text-indigo-700 mb-2 border-b-2 border-indigo-200 pb-2">總分：[X]/100</div>
-<h3>各項評分明細</h3>
-<table><tr><th>項目</th><th>分數</th><th>評語</th></tr>...</table>
+<div class="text-3xl font-extrabold text-indigo-700 mb-2 border-b-2 border-indigo-200 pb-2">小組平均總分：[X]/100</div>
+
+<h3>🏅 各組員（各論點）獨立評分明細</h3>
+<table>
+    <tr><th>負責組員 / 論點主題</th><th>獨立分數</th><th>各項表現點評 (論點/論據/邏輯/表達)</th><th>具體評語</th></tr>
+    <!-- 請為你辨識出的每一個獨立論點（每一位組員）生成一行 <tr> -->
+</table>
+
 <h3>綜合評語與語意還原分析</h3>
-<p>簡述你從散落文字中解讀出的學生整體邏輯架構，並給予綜合評價...</p>
-<h3>各論點邏輯具體改善建議</h3>
-<p>針對各論點的邏輯推演給予具體寫作指導...</p>
+<p>簡述你從文字中解讀出的學生整體邏輯架構，並給予小組整體報告方向的評價...</p>
+
+<h3>各組員論點邏輯具體改善建議</h3>
+<p>針對各組員的邏輯推演給予具體寫作指導...</p>
 
 <h3>📝 課堂實作：下一版 PPT 修改藍圖 (Slide-by-Slide)</h3>
 <!-- 針對你解讀出的各個論點主題，生成以下卡片 -->
@@ -188,7 +193,7 @@
                         model: "deepseek-chat",
                         messages: [
                             { role: "system", content: systemPrompt },
-                            { role: "user", content: `以下是從學生 PPTX 萃取出的純文字：\n${JSON.stringify(currentStudentData, null, 2)}` }
+                            { role: "user", content: `以下是從學生報告萃取出的 JSON 格式文字：\n${JSON.stringify(currentStudentData, null, 2)}` }
                         ],
                         temperature: 0.3
                     })
@@ -219,3 +224,6 @@
     </script>
 </body>
 </html>
+"""
+with open("LAN4003_Teacher_Grading_Platform.html", "w", encoding="utf-8") as f:
+    f.write(html_code)
